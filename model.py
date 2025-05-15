@@ -68,6 +68,51 @@ class FeedForwardBlock(nn.Module):
     def forward(self,x):
         #Batch,seq_len,dmodel --> linear1 ---> batch,seq_len,d_ff --->  linear2 ---> batch,seq_len,d_model
         return self.liner_2(self.droput(torch.relu(self.linear_1(x))))
+
+
+class MultiHeadAttentionBlock(nn.Module):
+    def __init__(self,d_model:int,h:int,dropout:float):
+        """ h is number of head """
+        """ each head will have the full access to the sentence but only will have access to part of their embeddings"""
+        """ so the understnd that division happens in the embedding dim  no the seq dimension"""
+        """ to make sure the the each head gets equal size matrix d_model should be divisible by the head"""
+        super().__init__()
+        self.d_model = d_model
+        self.h = h
+        assert d_model % h == 0, "d_model is not divisible by h"
+
+        self.d_k = d_model // h # this coresposding to what each head sees
+        self.w_q = nn.Linear(d_model,d_model) #wq
+        self.w_k = nn.Linear(d_model,d_model) #wk
+        self.w_v = nn.Linear(d_model,d_model) #wv
+
+        self.w_o  = nn.Linear(d_model,d_model) #in paper the W0 metric is (h*dv, d_model)  #dv and dk are of same size dv is used for wehn dk is multiplied by v matrix. Also yeh h*dv is d_model
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self,q,k,v,mask):
+        """mask is used when we dont want some words to interact with other. Most of the time duiring inference
+        basicially we calacute the attention score for each q intretatcing with each v. so mask is used to make the number small so that during the atteanion softamax calcates it as 0
+        """
+        query = self.w_q(q) #q_prime -> (batch,seq_len,d_model)
+        key = self.w_k(k) #k_prime -> (batch,seq_len,d_model)
+        value = self.w_v(v) #v_prime -> (batch,seq_len,d_model)
+
+        #(Batch,seq_len,d_model) -> botach,seq_Len,h,d_k   --> (batch,h,Seq_len,d_k)  
+        query = query.view(query.shape[0],query.shape[1],self.h,self.d_k).transpose(1,2)
+        key = key.view(key.shape[0],key.shape[1],self.h,self.d_k).transpose(1,2)
+        value = value.view(query.value[0],query.value[1],self.h,self.d_k).transpose(1,2)
+
+        
+          
+
+
+
+
+
+
+
+
+
     
 
 
