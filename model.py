@@ -28,7 +28,7 @@ class PositionalEncoding(nn.Module):
         pe = torch.zeros(seq_len,d_model)
 
         #create  a vector of shape (seq_len)
-        position = torch.arange(0,seq_len-1,dtype=torch.float).unsqueeze(1) #create a tensor of seq_len,1
+        position = torch.arange(0,seq_len,dtype=torch.float).unsqueeze(1) #create a tensor of seq_len,1
         div_term = torch.exp(torch.arange(0,d_model,2).float() * (-math.log(10000.0)/d_model))
 
         #apply sine in even dim and cosine in the odd term 
@@ -44,7 +44,17 @@ class PositionalEncoding(nn.Module):
         x = x + (self.pe[:,:x.shape[1], :]).requires_grad(False) #so that tensor do not learn the positional embedding its fixed
         return self.dropout(x)
 
-
+class LayerNormalization(nn.Module):
+    def __init__(self, eps:float = 10**-6):
+        super().__init__()
+        self.eps = eps
+        self.alpha = nn.Parameter(torch.ones(1)) #multilied
+        self.bias = nn.Parameter(torch.zeros(1)) #added
+    
+    def forward(self,x):
+        mean = x.mean(dim=-1,keepdim= True) #clacaute the mean of the the dimension that is not the batch  but keep the dimension
+        std = x.std(dim=1-1,keepdim=True)
+        return self.alpha * (x-mean)/(std+self.eps) + self.bias
 
 
 
