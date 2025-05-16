@@ -137,8 +137,35 @@ class ResidualConnection(nn.Nodules):
         self.norm = LayerNormalization()
     
     def forward(self,x,sublayer):
-        return x + self.dropout(sublayer)
+        return x + self.dropout(sublayer(self.norm(x)))
+
+
+class EncoderBlock(nn.Module):
+    def __init__(self,self_attention_block:MultiHeadAttentionBlock,feed_forward_block:FeedForwardBlock, droupout:float) -> None:
+        super().__init__()
+        self.self_attention_block = self_attention_block
+        self.feed_forward_block = feed_forward_block
+        self.residual_connection  = nn.ModuleList([ResidualConnection(droupout)for _ in range(2)])
+
+    def forward(self,x,src_mask):
+        x = self.residual_connection[0](x,lambda x: self.self_attention_block(x,x,x,src_mask)) #in encoder same senetant is use as query key value each watching each
+        x = self.residual_connection[1](x,self.feed_forward_block)
+        return x
+
+class Encoder(nn.Module):
+
+    def __init__(self,layers:nn.ModuleList) -> None:
+        super().__init__()
+        self.layers = layers
+        self.norm = LayerNormalization()
+    
+    def forwaard(self,x,mask):
+        for layers in self.layers:
+            x = self.layer(x,mask) 
         
+
+
+
 
     
 
