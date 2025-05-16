@@ -141,11 +141,11 @@ class ResidualConnection(nn.Nodules):
 
 
 class EncoderBlock(nn.Module):
-    def __init__(self,self_attention_block:MultiHeadAttentionBlock,feed_forward_block:FeedForwardBlock, droupout:float) -> None:
+    def __init__(self,self_attention_block:MultiHeadAttentionBlock,feed_forward_block:FeedForwardBlock, dropout:float) -> None:
         super().__init__()
         self.self_attention_block = self_attention_block
         self.feed_forward_block = feed_forward_block
-        self.residual_connection  = nn.ModuleList([ResidualConnection(droupout)for _ in range(2)])
+        self.residual_connection  = nn.ModuleList([ResidualConnection(dropout)for _ in range(2)])
 
     def forward(self,x,src_mask):
         x = self.residual_connection[0](x,lambda x: self.self_attention_block(x,x,x,src_mask)) #in encoder same senetant is use as query key value each watching each
@@ -153,21 +153,50 @@ class EncoderBlock(nn.Module):
         return x
 
 class Encoder(nn.Module):
-
     def __init__(self,layers:nn.ModuleList) -> None:
         super().__init__()
         self.layers = layers
         self.norm = LayerNormalization()
     
-    def forwaard(self,x,mask):
-        for layers in self.layers:
-            x = self.layer(x,mask) 
-        
+    def forward(self,x,mask):
+        for layer in self.layers:
+            x = layer(x,mask) 
+        return self.norm(x)
 
 
+
+class DecoderBlock(nn.Module):
+    def __init__(self, self_attention_block: MultiHeadAttentionBlock, cross_attention_block:MultiHeadAttentionBlock, feed_forward_block: FeedForwardBlock, dropout:float ):
+        super().__init__()
+        self.self_attention_block = self_attention_block
+        self.cross_attention_block = cross_attention_block
+        self.feed_forward_block = feed_forward_block
+        self.residual_connection = nn.Module([ResidualConnection(dropout)for _ in range(3)])
+    
+    def forward(self,x,encoder_output,src_mask,tgt_mask): #src is applied to encode and tgt is applied to decoder we have soource lange ie. english and a targte language
+        x = self.residual_connection[0](x, lambda x: self.self_attention_block(x,x,x,tgt_mask))#apply target mask from the decoder
+        x = self.residual_connection[1](x,lambda x:self.cross_attention_block(x,encoder_output,encoder_output,src_mask)) # query from decoder key and valeu from encoder,mask from encoder
+        x = self.residual_connection[2](x,self.feed_forward_block)
+
+
+
+class Decoder(nn.Module):
+    def __init__(self,layers:nn.ModuleList):
+        super().__init__()
+        self.layer = layers
+        self.norm = LayerNormalization()
+
+    def forward(self,x,encoder_output,src_msk,tgt_msk):
+        for layer in self.layers:
+            x = layer(x,encoder_output,src_msk,tgt_msk)
+        return self.norm(x)
 
 
     
+
+
+    
+
 
     
 
