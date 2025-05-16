@@ -126,6 +126,20 @@ class MultiHeadAttentionBlock(nn.Module):
         # (B,h,seq_len,d_k) ---- for concat bring back to ---> (B,seq_len,h,d_k) ------> (B,seq_Len,d_model)
         x = x.transpose(1,2).contigious().view(x.shape[0],-1,self.h * self.d_k)
 
+
+        return self.w_o(x)
+
+
+class ResidualConnection(nn.Nodules):
+    def __init__(self, dropout : float) -> None:
+        super().__init__()
+        self.dropout = nn.Dropout(dropout)
+        self.norm = LayerNormalization()
+    
+    def forward(self,x,sublayer):
+        return x + self.dropout(sublayer)
+        
+
     
 
     
