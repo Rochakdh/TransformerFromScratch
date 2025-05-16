@@ -88,6 +88,25 @@ class MultiHeadAttentionBlock(nn.Module):
 
         self.w_o  = nn.Linear(d_model,d_model) #in paper the W0 metric is (h*dv, d_model)  #dv and dk are of same size dv is used for wehn dk is multiplied by v matrix. Also yeh h*dv is d_model
         self.dropout = nn.Dropout(dropout)
+    
+    @staticmethod
+    def attention(query,key,value,mask,dropout:nn.Dropout):
+        d_k = query.shape[-1]
+        attention_score = (query @ key.transpose(-2,-1))/math.sqrt(d_k) #mat mul of query (batch,h,Seq_len,d_k) * (batch,h,d_k,seq_len) => (batch,h,seq_len(from query),seq_len(from value))
+        if mask is not None:
+            """mask is needed when we dontr what token to attend future token like in decoder
+            or if we dont want padding value to interact with other value they are just filler words to reach sequence length
+            """
+            attention_score.mask_fill_(mask == 0, -1e9) #mask is defined in such a way that where mask ==0  will be replaced by specified value
+        attention_score = attention_score.softmax(dim=-1) #(Batch,h,seq_len(from query),seq_len(from key)) # sommax is only apply to the last dimension.
+        #This applies softmax across the last dimension, which is L_key — i.e., across all key positions for each query.
+        """For each query vector, softmax across keys tells the model:Given this query, how much attention should I pay to each position in the sequence?"""
+        """Softmax is applied per row, where each row corresponds to how a specific token attends to all others."""
+        if dropout is not None:
+            attention_score = dropout(attention_score)
+        return (attention_score @ value),attention_score
+
+
 
     def forward(self,q,k,v,mask):
         """mask is used when we dont want some words to interact with other. Most of the time duiring inference
@@ -102,7 +121,19 @@ class MultiHeadAttentionBlock(nn.Module):
         key = key.view(key.shape[0],key.shape[1],self.h,self.d_k).transpose(1,2)
         value = value.view(query.value[0],query.value[1],self.h,self.d_k).transpose(1,2)
 
-        
+        x,self.attention_scores = MultiHeadAttentionBlock.attention(query,key,value,mask,self.dropout)
+
+        # (B,h,seq_len,d_k) ---- for concat bring back to ---> (B,seq_len,h,d_k) ------> (B,seq_Len,d_model)
+        x = x.transpose(1,2).contigious().view(x.shape[0],-1,self.h * self.d_k)
+
+    
+
+    
+
+
+    
+
+
           
 
 
